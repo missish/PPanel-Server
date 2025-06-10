@@ -97,14 +97,23 @@ func addProxyToGroup(proxyName, groupName string, groups []proxy.Group) []proxy.
 	return groups
 }
 
-func adapterRules(groups []*server.RuleGroup) (proxyGroup []proxy.Group, rules []string) {
+func adapterRules(groups []*server.RuleGroup) (proxyGroups []proxy.Group, rules []string) {
 	for _, group := range groups {
-		proxyGroup = append(proxyGroup, proxy.Group{
+
+		if group.Rules != "" {
+			rules = append(rules, strings.Split(group.Rules, "\n")...)
+		}
+
+		if group.Tags == "" {
+			continue
+		}
+
+		proxyGroups = append(proxyGroups, proxy.Group{
 			Name:    group.Name,
 			Type:    proxy.GroupTypeSelect,
 			Proxies: RemoveEmptyString(strings.Split(group.Tags, ",")),
 		})
-		rules = append(rules, strings.Split(group.Rules, "\n")...)
+
 	}
 	return
 }
@@ -125,16 +134,23 @@ func generateProxyGroup(servers []proxy.Proxy) (proxyGroup []proxy.Group, region
 	// 设置手动选择分组
 	proxyGroup = append(proxyGroup, []proxy.Group{
 		{
-			Name:     "智能线路",
+			Name:    "🚀 节点选择",
+			Type:    proxy.GroupTypeSelect,
+			Proxies: []string{"⚡ 智能线路", "🛡️ 故障转移"},
+		},
+		{
+			Name:     "⚡ 智能线路",
 			Type:     proxy.GroupTypeURLTest,
 			Proxies:  make([]string, 0),
 			URL:      "https://www.gstatic.com/generate_204",
 			Interval: 300,
 		},
 		{
-			Name:    "手动选择",
-			Type:    proxy.GroupTypeSelect,
-			Proxies: []string{"智能线路"},
+			Name:     "🛡️ 故障转移",
+			Type:     proxy.GroupTypeFallback,
+			Proxies:  make([]string, 0),
+			URL:      "https://www.gstatic.com/generate_204",
+			Interval: 300,
 		},
 	}...)
 
@@ -143,12 +159,13 @@ func generateProxyGroup(servers []proxy.Proxy) (proxyGroup []proxy.Group, region
 			proxyGroup = addProxyToGroup(node.Name, node.Country, proxyGroup)
 			region = append(region, node.Country)
 
-			proxyGroup = addProxyToGroup(node.Country, "智能线路", proxyGroup)
+			proxyGroup = addProxyToGroup(node.Country, "⚡ 智能线路", proxyGroup)
+			proxyGroup = addProxyToGroup(node.Country, "🛡️ 故障转移", proxyGroup)
 		}
 
-		proxyGroup = addProxyToGroup(node.Name, "手动选择", proxyGroup)
+		proxyGroup = addProxyToGroup(node.Name, "🚀 节点选择", proxyGroup)
 	}
-	proxyGroup = addProxyToGroup("DIRECT", "手动选择", proxyGroup)
+	proxyGroup = addProxyToGroup("DIRECT", "🚀 节点选择", proxyGroup)
 	return proxyGroup, tool.RemoveDuplicateElements(region...)
 }
 

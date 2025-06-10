@@ -1,19 +1,48 @@
 package clash
 
 type RawConfig struct {
-	Port               int          `yaml:"port" json:"port"`
-	SocksPort          int          `yaml:"socks-port" json:"socks-port"`
-	RedirPort          int          `yaml:"redir-port" json:"redir-port"`
-	TProxyPort         int          `yaml:"tproxy-port" json:"tproxy-port"`
-	MixedPort          int          `yaml:"mixed-port" json:"mixed-port"`
-	AllowLan           bool         `yaml:"allow-lan" json:"allow-lan"`
-	Mode               string       `yaml:"mode" json:"mode"`
-	LogLevel           string       `yaml:"log-level" json:"log-level"`
-	ExternalController string       `yaml:"external-controller" json:"external-controller"`
-	Secret             string       `yaml:"secret" json:"secret"`
-	Proxies            []Proxy      `yaml:"proxies" json:"proxies"`
-	ProxyGroups        []ProxyGroup `yaml:"proxy-groups" json:"proxy-groups"`
-	Rules              []string     `yaml:"rules" json:"rule"`
+	Port                    int                     `yaml:"port" json:"port"`
+	SocksPort               int                     `yaml:"socks-port" json:"socks-port"`
+	RedirPort               int                     `yaml:"redir-port" json:"redir-port"`
+	TProxyPort              int                     `yaml:"tproxy-port" json:"tproxy-port"`
+	MixedPort               int                     `yaml:"mixed-port" json:"mixed-port"`
+	AllowLan                bool                    `yaml:"allow-lan" json:"allow-lan"`
+	BindAddress             string                  `yaml:"bind-address" json:"bind-address"`
+	Mode                    string                  `yaml:"mode" json:"mode"`
+	LogLevel                string                  `yaml:"log-level" json:"log-level"`
+	ExternalController      string                  `yaml:"external-controller" json:"external-controller"`
+	Secret                  string                  `yaml:"secret" json:"secret"`
+	GlobalClientFingerprint string                  `yaml:"global-client-fingerprint" json:"global-client-fingerprint"`
+	UnifiedDelay            bool                    `yaml:"unified-delay" json:"unified-delay"`
+	GeoxURL                 GeoxURL                 `yaml:"geox-url" json:"geox-url"`
+	DNS                     DNSConfig               `yaml:"dns" json:"dns"`
+	RuleProviders           map[string]RuleProvider `yaml:"rule-providers" json:"rule-providers"`
+	Proxies                 []Proxy                 `yaml:"proxies" json:"proxies"`
+	ProxyGroups             []ProxyGroup            `yaml:"proxy-groups" json:"proxy-groups"`
+	Rules                   []string                `yaml:"rules" json:"rules"`
+}
+
+type GeoxURL struct {
+	MMDB string `yaml:"mmdb" json:"mmdb"`
+}
+
+type DNSConfig struct {
+	Enable                bool     `yaml:"enable" json:"enable"`
+	IPv6                  bool     `yaml:"ipv6" json:"ipv6"`
+	EnhancedMode          string   `yaml:"enhanced-mode" json:"enhanced-mode"`
+	FakeIPRange           string   `yaml:"fake-ip-range" json:"fake-ip-range"`
+	UseHosts              bool     `yaml:"use-hosts" json:"use-hosts"`
+	DefaultNameserver     []string `yaml:"default-nameserver" json:"default-nameserver"`
+	Nameserver            []string `yaml:"nameserver" json:"nameserver"`
+	ProxyServerNameserver []string `yaml:"proxy-server-nameserver" json:"proxy-server-nameserver"`
+}
+
+type RuleProvider struct {
+	Type     string `yaml:"type" json:"type"`
+	Behavior string `yaml:"behavior" json:"behavior"`
+	URL      string `yaml:"url" json:"url"`
+	Path     string `yaml:"path" json:"path"`
+	Interval int    `yaml:"interval" json:"interval"`
 }
 
 type Proxy struct {
