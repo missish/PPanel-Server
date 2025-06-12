@@ -142,8 +142,17 @@ func (l *PurchaseCheckoutLogic) alipayF2fPayment(pay *payment.Payment, info *ord
 		InvoiceName: f2FConfig.InvoiceName,
 		NotifyURL:   notifyUrl,
 	})
-	// Calculate the amount with exchange rate
-	amount, err := l.queryExchangeRate("CNY", info.Amount)
+
+	// 根据手续费模式计算手续费（基于原始金额）
+	// FeeMode=0: 无手续费
+	// FeeMode=1: 按百分比计算手续费 (使用 FeePercent)
+	// FeeMode=2: 固定手续费 (使用 FeeAmount)
+	feeAmount := calculateFee(info.Amount, pay)
+	// 计算包含手续费的总金额
+	totalAmountBeforeExchange := info.Amount + feeAmount
+
+	// 使用汇率计算最终金额（包含手续费的总金额）
+	amount, err := l.queryExchangeRate("CNY", totalAmountBeforeExchange)
 	if err != nil {
 		l.Errorw("[CheckoutOrderLogic] queryExchangeRate error", logger.Field("error", err.Error()))
 		return "", errors.Wrapf(xerr.NewErrCode(xerr.ERROR), "queryExchangeRate error: %s", err.Error())
@@ -174,7 +183,15 @@ func (l *PurchaseCheckoutLogic) stripePayment(config string, info *order.Order, 
 		PublicKey:     stripeConfig.PublicKey,
 		WebhookSecret: stripeConfig.WebhookSecret,
 	})
-	// Calculate the amount with exchange rate
+
+	// 根据手续费模式计算手续费（基于原始金额）
+	// FeeMode=0: 无手续费
+	// FeeMode=1: 按百分比计算手续费 (使用 FeePercent)
+	// FeeMode=2: 固定手续费 (使用 FeeAmount)
+	// 注意：这里需要从支付配置中获取手续费信息，需要传入完整的payment对象
+	// 暂时保持原有逻辑，建议修改函数签名以传入完整的payment对象
+
+	// 使用汇率计算金额
 	amount, err := l.queryExchangeRate("CNY", info.Amount)
 	if err != nil {
 		l.Errorw("[CheckoutOrderLogic] queryExchangeRate error", logger.Field("error", err.Error()))
@@ -213,17 +230,28 @@ func (l *PurchaseCheckoutLogic) stripePayment(config string, info *order.Order, 
 }
 
 func (l *PurchaseCheckoutLogic) epayPayment(config *payment.Payment, info *order.Order, returnUrl string) (string, error) {
+	// 解析易支付配置
 	epayConfig := payment.EPayConfig{}
 	if err := json.Unmarshal([]byte(config.Config), &epayConfig); err != nil {
 		l.Errorw("[CheckoutOrderLogic] Unmarshal error", logger.Field("error", err.Error()))
 		return "", errors.Wrapf(xerr.NewErrCode(xerr.ERROR), "Unmarshal error: %s", err.Error())
 	}
 	client := epay.NewClient(epayConfig.Pid, epayConfig.Url, epayConfig.Key)
-	// Calculate the amount with exchange rate
-	amount, err := l.queryExchangeRate("CNY", info.Amount)
+
+	// 根据手续费模式计算手续费（基于原始金额）
+	// FeeMode=0: 无手续费
+	// FeeMode=1: 按百分比计算手续费 (使用 FeePercent)
+	// FeeMode=2: 固定手续费 (使用 FeeAmount)
+	feeAmount := calculateFee(info.Amount, config)
+	// 计算包含手续费的总金额
+	totalAmountBeforeExchange := info.Amount + feeAmount
+
+	// 使用汇率计算最终金额（包含手续费的总金额）
+	amount, err := l.queryExchangeRate("CNY", totalAmountBeforeExchange)
 	if err != nil {
 		return "", err
 	}
+
 	notifyUrl := ""
 	if config.Domain != "" {
 		notifyUrl = config.Domain + "/v1/notify/" + config.Platform + "/" + config.Token
@@ -234,7 +262,7 @@ func (l *PurchaseCheckoutLogic) epayPayment(config *payment.Payment, info *order
 		}
 		notifyUrl = "https://" + host + "/v1/notify/" + config.Platform + "/" + config.Token
 	}
-	// create payment
+	// 创建支付链接
 	url := client.CreatePayUrl(epay.Order{
 		Name:      l.svcCtx.Config.Site.SiteName,
 		Amount:    amount,
@@ -283,6 +311,13 @@ func (l *PurchaseCheckoutLogic) balancePayment(u *user.User, o *order.Order) err
 		if err != nil {
 			return err
 		}
+
+		// 注意：余额支付通常不收取手续费，但如果需要可以在这里添加
+		// 根据手续费模式计算手续费（基于原始金额）
+		// FeeMode=0: 无手续费
+		// FeeMode=1: 按百分比计算手续费 (使用 FeePercent)
+		// FeeMode=2: 固定手续费 (使用 FeeAmount)
+		// 如果需要对余额支付收取手续费，需要传入payment配置
 
 		if userInfo.Balance < o.Amount {
 			return errors.Wrapf(xerr.NewErrCode(xerr.InsufficientBalance), "Insufficient balance")
