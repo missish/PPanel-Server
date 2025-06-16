@@ -124,8 +124,6 @@ func (l *RenewalLogic) Renewal(req *types.RenewalOrderRequest) (resp *types.Rene
 		feeAmount = calculateFee(amount, payment)
 	}
 
-	amount += feeAmount
-
 	// create order
 	orderInfo := order.Order{
 		UserId:         u.Id,
